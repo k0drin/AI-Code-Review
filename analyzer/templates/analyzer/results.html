@@ -4,29 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analysis Results</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 <body>
-    <header>
-        <h1>Code Analysis Results</h1>
-    </header>
-    <main>
-        {% if recommendations %}
-            <ul>
-                {% for result in recommendations %}
-                    {% for key, value in result.items %}
-                        <li>
-                            <strong>{{ key }}</strong>: {{ value }}
-                        </li>
+    <div class="container mt-5">
+        <header class="text-center mb-4">
+            <h1>Code Analysis Results</h1>
+        </header>
+        
+        <main>
+            {% if recommendations %}
+                <div class="list-group">
+                    {% for result in recommendations %}
+                        {% for key, value in result.items %}
+                            <div class="list-group-item">
+                                <h5 class="mb-1">{{ key }}</h5>
+                                <p class="mb-1">{{ value }}</p>
+                            </div>
+                        {% endfor %}
                     {% endfor %}
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p>No results to display.</p>
-        {% endif %}
-    </main>
-    <footer>
-        <p>&copy; {{ year }} Your Company Name</p>
-    </footer>
+                </div>
+            {% else %}
+                <div class="alert alert-warning" role="alert">
+                    No results to display.
+                </div>
+            {% endif %}
+        </main>
+        
+        <footer class="text-center mt-4">
+            <p>&copy; 2024 Ale AI</p>
+        </footer>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
-

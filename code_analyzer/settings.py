@@ -1,7 +1,9 @@
 import os
-import openai
 from pathlib import Path
+
+import openai
 from dotenv import load_dotenv
+
 
 load_dotenv()
 
