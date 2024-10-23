@@ -12,33 +12,33 @@ def home(request):
         form = RepositoryForm(request.POST)
         if form.is_valid():
             repository_url = form.cleaned_data['url']
-            recommendations = analyze_repository(repository_url)
+            assignment_description = form.cleaned_data['assignment_description']
+            candidate_level = form.cleaned_data['candidate_level']
+
+            recommendations = analyze_repository(repository_url, assignment_description, candidate_level)
+
             return render(request, 'analyzer/results.html', {'recommendations': recommendations})
     else:
         form = RepositoryForm()
+
     return render(request, 'analyzer/home.html', {'form': form})
 
 
-def analyze_repository(repo_url: str) -> str:
-    logging.info(f"Cloning repository: {repo_url}")
+def analyze_repository(repo_url: str, assignment_description: str, candidate_level: str) -> str:
+    """Clone the repository and analyze the code using OpenAI API."""
     local_repo_path = clone_repository(repo_url)
 
-    logging.info(f"Getting Python files from: {local_repo_path}")
     code_files = get_all_python_files(local_repo_path)
-
-    if not code_files:
-        logging.warning("No Python files found.")
-        return "No Python files found for analysis."
 
     analysis_results = []
     for code_file in code_files:
         with open(code_file, 'r') as f:
             code_content = f.read()
-            logging.info(f"Analyzing file: {code_file}")
-            analysis = get_code_analysis(code_content)
+            analysis = get_code_analysis(code_content, assignment_description, candidate_level)
             analysis_results.append({code_file: analysis})
 
     cleanup_repository(local_repo_path)
+
     return analysis_results
 
 
@@ -71,8 +71,14 @@ def get_all_python_files(repo_path: str) -> list[str]:
     return code_files
 
 
-def get_code_analysis(code: str) -> str:
-    prompt = f"Please review the following Python code and provide suggestions for improvement:\n\n{code}\n"
+def get_code_analysis(code: str, assignment_description: str, candidate_level: str) -> str:
+    """Send the code to OpenAI for analysis and return the response."""
+    prompt = (
+        f"Please review the following Python code in the context of a coding assignment:\n\n"
+        f"Assignment Description: {assignment_description}\n"
+        f"Candidate Level: {candidate_level}\n\n"
+        f"Code:\n{code}\n"
+    )
 
     try:
         response = openai.ChatCompletion.create(
@@ -83,8 +89,7 @@ def get_code_analysis(code: str) -> str:
             max_tokens=500,
             temperature=0.5
         )
-        analysis_content = response['choices'][0]['message']['content'].strip()
-        return analysis_content
+        return response['choices'][0]['message']['content'].strip()
     except Exception as e:
         logging.error("Error analyzing code: %s", e)
         return "Error analyzing code."
