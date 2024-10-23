@@ -1,13 +1,14 @@
 import os
 import logging
-import openai
+import httpx
+import asyncio
 from git import Repo
 from django.shortcuts import render
 from .forms import RepositoryForm
-from .utils import analyze_repository
+import traceback
 
 
-def home(request):
+async def home(request):
     if request.method == "POST":
         form = RepositoryForm(request.POST)
         if form.is_valid():
@@ -15,7 +16,7 @@ def home(request):
             assignment_description = form.cleaned_data['assignment_description']
             candidate_level = form.cleaned_data['candidate_level']
 
-            recommendations = analyze_repository(repository_url, assignment_description, candidate_level)
+            recommendations = await analyze_repository(repository_url, assignment_description, candidate_level)
 
             return render(request, 'analyzer/results.html', {'recommendations': recommendations})
     else:
@@ -24,18 +25,17 @@ def home(request):
     return render(request, 'analyzer/home.html', {'form': form})
 
 
-def analyze_repository(repo_url: str, assignment_description: str, candidate_level: str) -> str:
-    """Clone the repository and analyze the code using OpenAI API."""
+async def analyze_repository(repo_url: str, assignment_description: str, candidate_level: str) -> str:
+    """Clone the repository and analyze the code using OpenAI API asynchronously."""
     local_repo_path = clone_repository(repo_url)
 
     code_files = get_all_python_files(local_repo_path)
 
     analysis_results = []
     for code_file in code_files:
-        with open(code_file, 'r') as f:
-            code_content = f.read()
-            analysis = get_code_analysis(code_content, assignment_description, candidate_level)
-            analysis_results.append({code_file: analysis})
+        code_content = await read_file(code_file)
+        analysis = await get_code_analysis(code_content, assignment_description, candidate_level)
+        analysis_results.append({code_file: analysis})
 
     cleanup_repository(local_repo_path)
 
@@ -71,28 +71,55 @@ def get_all_python_files(repo_path: str) -> list[str]:
     return code_files
 
 
-def get_code_analysis(code: str, assignment_description: str, candidate_level: str) -> str:
-    """Send the code to OpenAI for analysis and return the response."""
+async def read_file(file_path: str) -> str:
+    """Asynchronously read a file."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, lambda: open(file_path, 'r').read())
+
+
+async def get_code_analysis(code: str, assignment_description: str, candidate_level: str) -> str:
+    """Send the code to OpenAI for analysis and return the response asynchronously, with retries."""
     prompt = (
-        f"Please review the following Python code in the context of a coding assignment:\n\n"
+        f"Please review the following code in the context of a coding assignment:\n\n"
         f"Assignment Description: {assignment_description}\n"
         f"Candidate Level: {candidate_level}\n\n"
         f"Code:\n{code}\n"
     )
 
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4-turbo",
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=500,
-            temperature=0.5
-        )
-        return response['choices'][0]['message']['content'].strip()
-    except Exception as e:
-        logging.error("Error analyzing code: %s", e)
-        return "Error analyzing code."
+    async with httpx.AsyncClient(timeout=30) as client:
+        for attempt in range(3):  # Retry up to 3 times
+            try:
+                response = await client.post(
+                    'https://api.openai.com/v1/chat/completions',
+                    json={
+                        "model": "gpt-4-turbo",
+                        "messages": [{"role": "user", "content": prompt}],
+                        "max_tokens": 500,
+                        "temperature": 0.5
+                    },
+                    headers={"Authorization": f"Bearer {os.getenv('OPENAI_API_KEY')}"}
+                )
+                response.raise_for_status()
+                return response.json()['choices'][0]['message']['content'].strip()
+
+            except httpx.ConnectTimeout:
+                logging.warning(f"Connection timeout on attempt {attempt + 1}, retrying...")
+                if attempt == 2:
+                    return "Error analyzing code: connection timed out after 3 attempts."
+
+            except httpx.HTTPStatusError as e:
+                logging.error("HTTP error occurred: %s - Status: %d - Response: %s", 
+                              e, e.response.status_code, e.response.text)
+                return f"Error analyzing code: HTTP {e.response.status_code}"
+
+            except Exception as e:
+                logging.error("Error analyzing code: %s", str(e))
+                logging.error("Traceback: %s", traceback.format_exc())
+                return "Error analyzing code due to an unexpected error."
+
+            await asyncio.sleep(2)
+
+    return "Error analyzing code: request failed after 3 attempts."
 
 
 def cleanup_repository(repo_path: str):
