@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis Results</title>
+</head>
+<body>
+    <header>
+        <h1>Code Analysis Results</h1>
+    </header>
+    <main>
+        {% if recommendations %}
+            <ul>
+                {% for result in recommendations %}
+                    {% for key, value in result.items %}
+                        <li>
+                            <strong>{{ key }}</strong>: {{ value }}
+                        </li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No results to display.</p>
+        {% endif %}
+    </main>
+    <footer>
+        <p>&copy; {{ year }} Your Company Name</p>
+    </footer>
+</body>
+</html>
+
