@@ -6,33 +6,46 @@
     <title>Analysis Results</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
-<body>
+<body class="bg-light">
     <div class="container mt-5">
-        <header class="text-center mb-4">
-            <h1>Code Analysis Results</h1>
+        <!-- Header -->
+        <header class="text-center mb-5">
+            <h1 class="display-4 text-primary">Code Analysis Results</h1>
+            <p class="text-muted">Here are the findings from your repository analysis</p>
         </header>
         
+        <!-- Main Content -->
         <main>
             {% if recommendations %}
-                <div class="list-group">
+                <div class="row">
                     {% for result in recommendations %}
                         {% for key, value in result.items %}
-                            <div class="list-group-item">
-                                <h5 class="mb-1">{{ key }}</h5>
-                                <p class="mb-1">{{ value }}</p>
+                            <div class="col-md-6 mb-4">
+                                <div class="card shadow-sm">
+                                    <div class="card-body">
+                                        <h5 class="card-title text-primary">{{ key }}</h5>
+                                        <p class="card-text">{{ value }}</p>
+                                    </div>
+                                </div>
                             </div>
                         {% endfor %}
                     {% endfor %}
                 </div>
             {% else %}
-                <div class="alert alert-warning" role="alert">
-                    No results to display.
+                <div class="alert alert-warning text-center" role="alert">
+                    <strong>No results to display.</strong> Please try analyzing another repository.
                 </div>
             {% endif %}
         </main>
         
-        <footer class="text-center mt-4">
-            <p>&copy; 2024 Ale AI</p>
+        <!-- Back Button -->
+        <div class="text-center mt-4">
+            <a href="/" class="btn btn-outline-primary btn-lg">Go Back</a>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="text-center py-3 mt-4 bg-white">
+            <p class="mb-0 text-muted">&copy; 2024 Ale AI</p>
         </footer>
     </div>
 
